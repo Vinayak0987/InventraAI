@@ -58,6 +58,7 @@ class Experiment(db.Model):
             'status': self.status,
             'best_model_name': self.best_model_name,
             'best_score': self.best_score,
+            'error_message': results.get('error_message'),
             'created_at': self.created_at.isoformat(),
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'has_package': bool(results.get('model_package_path'))

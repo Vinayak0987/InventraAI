@@ -60,8 +60,18 @@ def seed_db():
             username='demo'
         )
         demo_user.set_password('demo123')
-        db.session.add(demo_user)
-        
+        db.session.flush()
+
+        churn_columns = [
+            'customerID', 'gender', 'SeniorCitizen', 'tenure',
+            'MonthlyCharges', 'TotalCharges', 'Contract',
+            'PaymentMethod', 'InternetService', 'Churn'
+        ]
+        column_info = {
+            col: {'dtype': 'object' if col in ('customerID', 'gender', 'Contract', 'PaymentMethod', 'InternetService', 'Churn') else 'float64', 'null_count': 0}
+            for col in churn_columns
+        }
+
         # Create sample dataset metadata
         sample_dataset = Dataset(
             name='Sample Customer Churn',
@@ -70,9 +80,10 @@ def seed_db():
             file_path='demo/sample_churn.csv',
             data_type='tabular',
             num_rows=1000,
-            num_columns=10,
+            num_columns=len(churn_columns),
+            column_info=column_info,
             profile_status='completed',
-            user_id=1  # Will be associated after commit
+            user_id=demo_user.id
         )
         
         db.session.add(sample_dataset)

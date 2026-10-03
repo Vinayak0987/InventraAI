@@ -2,6 +2,7 @@
 Inventory Management Routes
 API endpoints for inventory management and AI agents
 """
+import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
@@ -32,6 +33,40 @@ def get_inventory_items():
     return jsonify({
         'items': [item.to_dict() for item in items],
         'total': len(items)
+    }), 200
+
+
+# ========================================
+# INTERNAL endpoints (for Streamlit)
+# ========================================
+@inventory_bp.route('/items/internal', methods=['GET'])
+def internal_get_inventory_items():
+    """
+    Internal endpoint used by the Streamlit Stock Predictor page.
+    It avoids JWT by allowing calls only when the internal secret is provided
+    or the caller is local/cluster-internal (dev convenience).
+    """
+    internal_secret = os.environ.get('INTERNAL_API_SECRET', 'inferx-internal-2024')
+    provided_secret = request.headers.get('X-Internal-Secret', '')
+    remote_addr = request.remote_addr or ''
+
+    is_internal = (
+        remote_addr.startswith('172.') or
+        remote_addr == '127.0.0.1' or
+        remote_addr == 'localhost' or
+        provided_secret == internal_secret
+    )
+
+    if not is_internal:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    # Streamlit doesn't send user_id; default to demo user.
+    user_id = request.args.get('user_id', default=1, type=int)
+    items = InventoryItem.query.filter_by(user_id=user_id).all()
+
+    return jsonify({
+        'items': [item.to_dict() for item in items],
+        'total': len(items),
     }), 200
 
 

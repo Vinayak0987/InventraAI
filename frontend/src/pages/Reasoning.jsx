@@ -1,30 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
-import { useInventoryStore } from '../store/inventoryStore'
 
 export default function Reasoning() {
     const { token } = useAuthStore()
-    const {
-        reasoningState,
-        setReasoningState,
-        setAllAnalysis,
-        stockAnalysis,
-        expiryAnalysis,
-        orderSuggestions,
-        trendsAnalysis,
-        fullReport
-    } = useInventoryStore()
-
-    const { models, datasets, selectedModel, selectedDataset, activeTab } = reasoningState
-
-    // Setters wrapper
-    const setModels = (data) => setReasoningState({ models: data })
-    const setDatasets = (data) => setReasoningState({ datasets: data })
-    const setSelectedModel = (data) => setReasoningState({ selectedModel: data })
-    const setSelectedDataset = (data) => setReasoningState({ selectedDataset: data })
-    const setActiveTab = (data) => setReasoningState({ activeTab: data })
-
+    const [models, setModels] = useState([])
+    const [datasets, setDatasets] = useState([])
+    const [selectedModel, setSelectedModel] = useState(null)
+    const [selectedDataset, setSelectedDataset] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState('overview')
+
+    // Agent reports
+    const [stockAnalysis, setStockAnalysis] = useState(null)
+    const [expiryAnalysis, setExpiryAnalysis] = useState(null)
+    const [orderSuggestions, setOrderSuggestions] = useState(null)
+    const [trendsAnalysis, setTrendsAnalysis] = useState(null)
+    const [fullReport, setFullReport] = useState(null)
 
     useEffect(() => {
         fetchModels()
@@ -60,46 +51,28 @@ export default function Reasoning() {
     }
 
     const runFullAnalysis = async () => {
-        if (!selectedDataset || !selectedModel) {
-            alert('Please select both a dataset and a model')
+        if (!selectedModel) {
+            alert('Please select a model first')
             return
         }
 
         setLoading(true)
-        setLoading(true)
-        // Clear previous analysis
-        setAllAnalysis({ stock: null, expiry: null, orders: null, trends: null, report: null })
+        setFullReport(null)
 
         try {
-            // Run all agent analyses using the new dataset-based endpoints
+            // Run all agent analyses
             const [stockRes, expiryRes, orderRes, trendRes] = await Promise.all([
-                fetch(`/api/reasoning/stock-analysis/${selectedDataset.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                fetch('/api/inventory/analysis/stock', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`/api/reasoning/expiry-analysis/${selectedDataset.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                fetch('/api/inventory/analysis/expiry', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`/api/reasoning/order-suggestions/${selectedDataset.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                fetch('/api/inventory/orders/suggest', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`/api/reasoning/trends/${selectedDataset.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                fetch('/api/inventory/analysis/trends?location=Store%20Location&days=30', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 })
             ])
 
@@ -110,18 +83,21 @@ export default function Reasoning() {
                 trendRes.json()
             ])
 
-            // Store intermediate results if needed, or just wait for full set
-            // For now we set them to local variables 'stock', 'expiry' etc are already defined
+            setStockAnalysis(stock)
+            setExpiryAnalysis(expiry)
+            setOrderSuggestions(orders)
+            setTrendsAnalysis(trends)
 
             // Generate comprehensive AI report
-            const reportRes = await fetch(`/api/reasoning/full-report/${selectedDataset.id}`, {
+            const reportRes = await fetch('/api/models/generate-inventory-report', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model_id: selectedModel?.id,
+                    model_id: selectedModel.id,
+                    dataset_id: selectedDataset?.id,
                     stock_analysis: stock,
                     expiry_analysis: expiry,
                     order_suggestions: orders,
@@ -129,23 +105,13 @@ export default function Reasoning() {
                 })
             })
 
-            let reportData = null
             if (reportRes.ok) {
-                reportData = await reportRes.json()
+                const reportData = await reportRes.json()
+                setFullReport(reportData)
             }
-
-            // Save all analysis data to the shared inventory store
-            setAllAnalysis({
-                stock,
-                expiry,
-                orders,
-                trends,
-                report: reportData
-            })
 
         } catch (error) {
             console.error('Analysis failed:', error)
-            alert('Analysis failed. Please try again.')
         }
 
         setLoading(false)
@@ -154,34 +120,17 @@ export default function Reasoning() {
     return (
         <div className="reasoning-page">
             <div className="page-header">
-                <h1>🧠 AI Reasoning & Data Intelligence</h1>
-                <p>Get smart insights and recommendations from your datasets using AI agents</p>
+                <h1>🧠 AI Reasoning & Inventory Intelligence</h1>
+                <p>Get smart recommendations based on your trained models and inventory data</p>
             </div>
 
-            {/* Dataset Selection */}
+            {/* Model & Dataset Selection */}
             <div className="selection-section">
                 <div className="card">
-                    <h2>📊 Select Dataset for Analysis</h2>
+                    <h2>📊 Select Model & Dataset</h2>
                     <div className="selection-grid">
                         <div className="selection-group">
-                            <label>Dataset (Required)</label>
-                            <select
-                                value={selectedDataset?.id || ''}
-                                onChange={(e) => {
-                                    const dataset = datasets.find(d => d.id === parseInt(e.target.value))
-                                    setSelectedDataset(dataset)
-                                }}
-                            >
-                                <option value="">-- Select a Dataset --</option>
-                                {datasets.map(ds => (
-                                    <option key={ds.id} value={ds.id}>
-                                        {ds.name} ({ds.num_rows?.toLocaleString() || 0} rows)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="selection-group">
-                            <label>AI Model (Required)</label>
+                            <label>Trained Model</label>
                             <select
                                 value={selectedModel?.id || ''}
                                 onChange={(e) => {
@@ -197,22 +146,29 @@ export default function Reasoning() {
                                 ))}
                             </select>
                         </div>
+                        <div className="selection-group">
+                            <label>Dataset (Optional)</label>
+                            <select
+                                value={selectedDataset?.id || ''}
+                                onChange={(e) => {
+                                    const dataset = datasets.find(d => d.id === parseInt(e.target.value))
+                                    setSelectedDataset(dataset)
+                                }}
+                            >
+                                <option value="">-- Select a Dataset --</option>
+                                {datasets.map(ds => (
+                                    <option key={ds.id} value={ds.id}>{ds.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                     <button
                         className="btn btn-primary analyze-btn"
                         onClick={runFullAnalysis}
-                        disabled={loading || !selectedDataset || !selectedModel}
+                        disabled={loading || !selectedModel}
                     >
-                        {loading ? '🔄 Analyzing your data...' : '🚀 Run AI Analysis on Dataset'}
+                        {loading ? '🔄 Analyzing...' : '🚀 Run AI Analysis with All Agents'}
                     </button>
-                    {(!selectedDataset || !selectedModel) && (
-                        <p className="helper-text">
-                            {datasets.length === 0 ? 'Upload a dataset first to use AI Reasoning features' :
-                                models.length === 0 ? 'Train a model first to use AI Reasoning features' :
-                                    !selectedDataset ? 'Select a dataset to continue' :
-                                        !selectedModel ? 'Select a trained model to continue' : ''}
-                        </p>
-                    )}
                 </div>
             </div>
 
@@ -226,19 +182,19 @@ export default function Reasoning() {
                     <button
                         className={`tab ${activeTab === 'stock' ? 'active' : ''}`}
                         onClick={() => setActiveTab('stock')}
-                    >🔍 Data Analysis</button>
+                    >🔍 Stock Analysis</button>
                     <button
                         className={`tab ${activeTab === 'expiry' ? 'active' : ''}`}
                         onClick={() => setActiveTab('expiry')}
-                    >📅 Patterns & Dates</button>
+                    >📅 Expiry & Tips</button>
                     <button
                         className={`tab ${activeTab === 'orders' ? 'active' : ''}`}
                         onClick={() => setActiveTab('orders')}
-                    >🛒 Action Items</button>
+                    >🛒 Purchase Orders</button>
                     <button
                         className={`tab ${activeTab === 'trends' ? 'active' : ''}`}
                         onClick={() => setActiveTab('trends')}
-                    >📈 Trends & Insights</button>
+                    >📈 Local Trends</button>
                 </div>
             </div>
 
@@ -250,36 +206,36 @@ export default function Reasoning() {
                         {!stockAnalysis ? (
                             <div className="empty-state">
                                 <h3>🤖 AI Agents Ready</h3>
-                                <p>Select a dataset and click "Run AI Analysis" to get comprehensive data insights</p>
+                                <p>Select a model and click "Run AI Analysis" to get comprehensive inventory insights</p>
                                 <div className="agents-preview">
-                                    <div className="agent-item">🔍 <strong>Data Quality Agent</strong> - Analyzes data health and completeness</div>
-                                    <div className="agent-item">📅 <strong>Pattern Detection Agent</strong> - Finds patterns and anomalies</div>
-                                    <div className="agent-item">🛒 <strong>Recommendation Agent</strong> - Generates actionable insights</div>
-                                    <div className="agent-item">📈 <strong>Trend Analysis Agent</strong> - Identifies correlations and trends</div>
-                                    <div className="agent-item">🧠 <strong>AI Report Agent</strong> - Creates comprehensive reports</div>
+                                    <div className="agent-item">🔍 <strong>Stock Analysis Agent</strong> - Identifies low/out-of-stock items</div>
+                                    <div className="agent-item">📅 <strong>Expiry Prediction Agent</strong> - Tracks expiring products + selling tips</div>
+                                    <div className="agent-item">🛒 <strong>Order Generation Agent</strong> - Auto-creates smart purchase orders</div>
+                                    <div className="agent-item">🏪 <strong>Vendor Quotation Agent</strong> - Compares vendor quotes with AI ranking</div>
+                                    <div className="agent-item">📈 <strong>Local Trends Agent</strong> - Analyzes local events for demand forecasting</div>
                                 </div>
                             </div>
                         ) : (
                             <div className="dashboard-grid">
                                 <div className="metric-card health">
-                                    <h3>📊 Data Health</h3>
+                                    <h3>📊 Stock Health</h3>
                                     <div className="metric-value">{stockAnalysis.health_score?.toFixed(0) || 0}%</div>
-                                    <p>{stockAnalysis.total_items || 0} records analyzed</p>
+                                    <p>{stockAnalysis.total_items || 0} items tracked</p>
                                 </div>
                                 <div className="metric-card warning">
-                                    <h3>⚠️ Issues Found</h3>
+                                    <h3>⚠️ Low Stock</h3>
                                     <div className="metric-value">{stockAnalysis.low_stock?.count || 0}</div>
-                                    <p>Items need attention</p>
+                                    <p>Items need restocking</p>
                                 </div>
                                 <div className="metric-card danger">
-                                    <h3>🚫 Critical</h3>
+                                    <h3>🚫 Out of Stock</h3>
                                     <div className="metric-value">{stockAnalysis.out_of_stock?.count || 0}</div>
-                                    <p>Immediate action needed</p>
+                                    <p>Critical - Order now!</p>
                                 </div>
                                 <div className="metric-card expiry">
-                                    <h3>💡 Suggestions</h3>
-                                    <div className="metric-value">{orderSuggestions?.total_items || 0}</div>
-                                    <p>Actions recommended</p>
+                                    <h3>📅 Expiring Soon</h3>
+                                    <div className="metric-value">{expiryAnalysis?.expiring_soon?.count || 0}</div>
+                                    <p>Within 7 days</p>
                                 </div>
                             </div>
                         )}
@@ -289,15 +245,7 @@ export default function Reasoning() {
                             <div className="card ai-report">
                                 <h2>🤖 AI Generated Report</h2>
                                 <div className="report-content">
-                                    {fullReport.summary && <p className="summary-text">{fullReport.summary}</p>}
-
-                                    {fullReport.risk_level && (
-                                        <div className={`risk-badge ${fullReport.risk_level}`}>
-                                            Risk Level: {fullReport.risk_level.toUpperCase()}
-                                            {fullReport.risk_reason && <span> - {fullReport.risk_reason}</span>}
-                                        </div>
-                                    )}
-
+                                    {fullReport.summary && <p>{fullReport.summary}</p>}
                                     {fullReport.recommendations && (
                                         <div className="recommendations">
                                             <h4>Key Recommendations:</h4>
@@ -308,28 +256,17 @@ export default function Reasoning() {
                                             </ul>
                                         </div>
                                     )}
-
-                                    {fullReport.insights && fullReport.insights.length > 0 && (
-                                        <div className="insights-section">
-                                            <h4>💡 AI Insights:</h4>
-                                            <ul>
-                                                {fullReport.insights.map((insight, idx) => (
-                                                    <li key={idx}>{insight}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Data Analysis Tab */}
+                {/* Stock Analysis Tab */}
                 {activeTab === 'stock' && stockAnalysis && (
                     <div className="stock-section">
                         <div className="card">
-                            <h2>🔍 Data Analysis Agent Report</h2>
+                            <h2>🔍 Stock Analysis Agent Report</h2>
 
                             {stockAnalysis.ai_insights && (
                                 <div className="ai-insight-box">
@@ -340,23 +277,23 @@ export default function Reasoning() {
 
                             {stockAnalysis.out_of_stock?.items?.length > 0 && (
                                 <div className="alert-section critical">
-                                    <h3>🚫 Critical Issues - Immediate Action Required</h3>
+                                    <h3>🚫 Out of Stock - Immediate Action Required</h3>
                                     <table className="data-table">
                                         <thead>
                                             <tr>
-                                                <th>Item</th>
+                                                <th>Product</th>
                                                 <th>Category</th>
-                                                <th>Value</th>
+                                                <th>Min Level</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {stockAnalysis.out_of_stock.items.map((item, idx) => (
                                                 <tr key={idx}>
-                                                    <td><strong>{item.name || `Item ${idx + 1}`}</strong></td>
-                                                    <td>{item.category || 'N/A'}</td>
-                                                    <td>{item.quantity || 0}</td>
-                                                    <td><span className="badge danger">Review Now</span></td>
+                                                    <td><strong>{item.name}</strong></td>
+                                                    <td>{item.category}</td>
+                                                    <td>{item.min_stock_level}</td>
+                                                    <td><span className="badge danger">Order Now</span></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -366,20 +303,20 @@ export default function Reasoning() {
 
                             {stockAnalysis.low_stock?.items?.length > 0 && (
                                 <div className="alert-section warning">
-                                    <h3>⚠️ Items Needing Attention</h3>
+                                    <h3>⚠️ Low Stock Items</h3>
                                     <table className="data-table">
                                         <thead>
                                             <tr>
-                                                <th>Item</th>
-                                                <th>Current Value</th>
-                                                <th>Threshold</th>
-                                                <th>Gap</th>
+                                                <th>Product</th>
+                                                <th>Current Qty</th>
+                                                <th>Min Level</th>
+                                                <th>Shortage</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {stockAnalysis.low_stock.items.map((item, idx) => (
                                                 <tr key={idx}>
-                                                    <td>{item.name || `Item ${idx + 1}`}</td>
+                                                    <td>{item.name}</td>
                                                     <td>{item.quantity}</td>
                                                     <td>{item.min_stock_level}</td>
                                                     <td className="shortage">-{item.min_stock_level - item.quantity}</td>
@@ -389,31 +326,24 @@ export default function Reasoning() {
                                     </table>
                                 </div>
                             )}
-
-                            {stockAnalysis.healthy?.count > 0 && (
-                                <div className="success-section">
-                                    <h3>✅ Healthy Data</h3>
-                                    <p>{stockAnalysis.healthy.count} records are within normal parameters</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Patterns Tab */}
+                {/* Expiry Tab */}
                 {activeTab === 'expiry' && expiryAnalysis && (
                     <div className="expiry-section">
                         <div className="card">
-                            <h2>📅 Pattern Detection Agent Report</h2>
+                            <h2>📅 Expiry Prediction Agent Report</h2>
 
                             {expiryAnalysis.expired?.items?.length > 0 && (
                                 <div className="alert-section critical">
-                                    <h3>🚨 Past Due - Review Required</h3>
+                                    <h3>🚨 EXPIRED - Remove Immediately</h3>
                                     {expiryAnalysis.expired.items.map((item, idx) => (
                                         <div key={idx} className="expiry-item expired">
                                             <strong>{item.name}</strong>
-                                            <span>{Math.abs(item.days_until_expiry)} days overdue</span>
-                                            <span className="badge danger">Review</span>
+                                            <span>Expired {Math.abs(item.days_until_expiry)} days ago</span>
+                                            <span className="badge danger">Remove</span>
                                         </div>
                                     ))}
                                 </div>
@@ -421,12 +351,12 @@ export default function Reasoning() {
 
                             {expiryAnalysis.expiring_soon?.items?.length > 0 && (
                                 <div className="alert-section warning">
-                                    <h3>⏰ Upcoming (within 7 days)</h3>
+                                    <h3>⏰ Expiring Soon (7 days)</h3>
                                     {expiryAnalysis.expiring_soon.items.map((item, idx) => (
                                         <div key={idx} className="expiry-item soon">
                                             <strong>{item.name}</strong>
-                                            <span>{item.days_until_expiry} days remaining</span>
-                                            <span>Count: {item.quantity}</span>
+                                            <span>{item.days_until_expiry} days left</span>
+                                            <span>Qty: {item.quantity}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -434,7 +364,7 @@ export default function Reasoning() {
 
                             {expiryAnalysis.selling_tips?.length > 0 && (
                                 <div className="selling-tips">
-                                    <h3>💡 AI Recommendations</h3>
+                                    <h3>💡 AI Selling Tips</h3>
                                     <div className="tips-grid">
                                         {expiryAnalysis.selling_tips.map((tip, idx) => (
                                             <div key={idx} className="tip-card">
@@ -447,28 +377,56 @@ export default function Reasoning() {
                                     </div>
                                 </div>
                             )}
-
-                            {(!expiryAnalysis.expired?.items?.length && !expiryAnalysis.expiring_soon?.items?.length) && (
-                                <div className="success-section">
-                                    <h3>✅ No Critical Date Patterns Found</h3>
-                                    <p>Your dataset doesn't have date-based patterns requiring immediate attention.</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Action Items Tab */}
+                {/* Orders Tab */}
                 {activeTab === 'orders' && orderSuggestions && (
                     <div className="orders-section">
                         <div className="card">
                             <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2>🛒 AI Action Recommendations</h2>
+                                <h2>🛒 Order Generation Agent Report</h2>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={async () => {
+                                        if (!window.confirm('Are you sure you want to book these orders?')) return;
+                                        try {
+                                            const token = localStorage.getItem('token');
+                                            // Create order for all suggested items
+                                            const response = await fetch('http://localhost:5000/api/inventory/orders', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                },
+                                                body: JSON.stringify({
+                                                    items: orderSuggestions.suggested_items,
+                                                    total: orderSuggestions.estimated_total_cost,
+                                                    notes: "Auto-generated by AI Order Agent",
+                                                    ai_reasoning: orderSuggestions.ai_reasoning,
+                                                    urgency_level: "high"
+                                                })
+                                            });
+                                            if (response.ok) {
+                                                alert('✅ Order booked successfully! Sent to vendor.');
+                                            } else {
+                                                alert('❌ Failed to book order');
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                            alert('❌ Error booking order');
+                                        }
+                                    }}
+                                    style={{ background: '#10b981' }} // Green color for action
+                                >
+                                    ✅ Approve & Book All Orders
+                                </button>
                             </div>
 
                             <div className="order-summary">
                                 <div className="summary-item">
-                                    <span>Total Actions</span>
+                                    <span>Items to Order</span>
                                     <strong>{orderSuggestions.total_items || 0}</strong>
                                 </div>
                                 <div className="summary-item critical">
@@ -480,29 +438,30 @@ export default function Reasoning() {
                                     <strong>{orderSuggestions.high_priority_count || 0}</strong>
                                 </div>
                                 <div className="summary-item">
-                                    <span>Est. Impact</span>
-                                    <strong>${orderSuggestions.estimated_total_cost?.toFixed(0) || 0}</strong>
+                                    <span>Est. Cost</span>
+                                    <strong>₹{orderSuggestions.estimated_total_cost?.toFixed(0) || 0}</strong>
                                 </div>
                             </div>
 
                             {orderSuggestions.ai_reasoning && (
                                 <div className="ai-insight-box">
-                                    <h4>🤖 AI Reasoning</h4>
+                                    <h4>🤖 AI Order Reasoning</h4>
                                     <p>{orderSuggestions.ai_reasoning}</p>
                                 </div>
                             )}
 
                             {orderSuggestions.suggested_items?.length > 0 && (
                                 <div className="order-table">
-                                    <h3>📋 Recommended Actions</h3>
+                                    <h3>📋 Suggested Purchase Order</h3>
                                     <table className="data-table">
                                         <thead>
                                             <tr>
                                                 <th>Priority</th>
-                                                <th>Item</th>
+                                                <th>Product</th>
                                                 <th>Current</th>
-                                                <th>Suggested Action</th>
-                                                <th>Est. Impact</th>
+                                                <th>Order Qty</th>
+                                                <th>Vendor</th>
+                                                <th>Est. Cost</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -516,24 +475,13 @@ export default function Reasoning() {
                                                     </td>
                                                     <td>{item.item_name}</td>
                                                     <td>{item.current_quantity}</td>
-                                                    <td><strong>+{item.order_quantity}</strong> {item.unit}</td>
-                                                    <td>${item.estimated_cost?.toFixed(0)}</td>
+                                                    <td><strong>{item.order_quantity}</strong> {item.unit}</td>
+                                                    <td>{item.best_vendor || 'Best Market Price'}</td>
+                                                    <td>₹{item.estimated_cost?.toFixed(0)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>
-                            )}
-
-                            {/* Navigate to Inventory Button */}
-                            {orderSuggestions.suggested_items?.length > 0 && (
-                                <div className="proceed-to-inventory">
-                                    <a href="/daily-items" className="btn btn-success proceed-btn">
-                                        <span>🛒</span>
-                                        Proceed to Vendor Selection & Orders
-                                        <span>→</span>
-                                    </a>
-                                    <p className="proceed-hint">Select vendors and process daily items</p>
                                 </div>
                             )}
                         </div>
@@ -544,23 +492,8 @@ export default function Reasoning() {
                 {activeTab === 'trends' && trendsAnalysis && (
                     <div className="trends-section">
                         <div className="card">
-                            <h2>📈 Trends & Patterns Agent Report</h2>
-                            <p>Analysis Type: {trendsAnalysis.location} | Patterns Found: {trendsAnalysis.pattern_count || 0}</p>
-
-                            {trendsAnalysis.correlations?.length > 0 && (
-                                <div className="correlations-section">
-                                    <h3>🔗 Correlations Found</h3>
-                                    <div className="correlation-grid">
-                                        {trendsAnalysis.correlations.map((corr, idx) => (
-                                            <div key={idx} className={`correlation-card ${corr.strength}`}>
-                                                <h4>{corr.columns[0]} ↔ {corr.columns[1]}</h4>
-                                                <p className="correlation-value">{(corr.value * 100).toFixed(1)}%</p>
-                                                <span className="strength-label">{corr.strength} correlation</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            <h2>📈 Local Trends Agent Report</h2>
+                            <p>Location: {trendsAnalysis.location} | Looking ahead: {trendsAnalysis.date_range_days} days</p>
 
                             <div className="events-grid">
                                 {trendsAnalysis.events?.map((event, idx) => (
@@ -568,20 +501,20 @@ export default function Reasoning() {
                                         <h4>{event.name}</h4>
                                         <p><strong>Type:</strong> {event.type}</p>
                                         <p className="demand-change">
-                                            <strong>Significance:</strong>
-                                            <span className="positive">{event.expected_demand_change}%</span>
+                                            <strong>Expected Demand:</strong>
+                                            <span className="positive">+{event.expected_demand_change}%</span>
                                         </p>
-                                        <p><strong>Related:</strong> {event.affected_categories?.join(', ')}</p>
+                                        <p><strong>Categories:</strong> {event.affected_categories?.join(', ')}</p>
                                     </div>
                                 ))}
                             </div>
 
                             {trendsAnalysis.demand_forecast && (
                                 <div className="forecast-section">
-                                    <h3>🔮 Insights & Recommendations</h3>
+                                    <h3>🔮 Demand Forecast</h3>
                                     <div className="forecast-content">
-                                        {trendsAnalysis.demand_forecast.top_categories?.length > 0 && (
-                                            <p><strong>Key Areas:</strong> {trendsAnalysis.demand_forecast.top_categories.join(', ')}</p>
+                                        {trendsAnalysis.demand_forecast.top_categories && (
+                                            <p><strong>Stock up on:</strong> {trendsAnalysis.demand_forecast.top_categories.join(', ')}</p>
                                         )}
                                         {trendsAnalysis.demand_forecast.recommendations?.map((rec, idx) => (
                                             <p key={idx}>• {rec}</p>
@@ -608,8 +541,6 @@ export default function Reasoning() {
                 .selection-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; color: #9ca3af; }
                 .selection-group select { width: 100%; padding: 0.75rem; border: 1px solid #3d3d5c; border-radius: 8px; background: #0f0f23; color: #ffffff; }
                 .selection-group select option { background: #1a1a2e; color: #ffffff; }
-                
-                .helper-text { margin-top: 0.75rem; color: #f59e0b; font-size: 0.9rem; }
                 
                 .btn { padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
                 .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
@@ -649,10 +580,6 @@ export default function Reasoning() {
                 .alert-section.warning { background: rgba(245, 158, 11, 0.15); border-left: 4px solid #f59e0b; }
                 .alert-section.warning h3 { color: #fcd34d; }
                 
-                .success-section { padding: 1rem; background: rgba(16, 185, 129, 0.15); border-radius: 8px; border-left: 4px solid #10b981; }
-                .success-section h3 { color: #6ee7b7; margin-bottom: 0.5rem; }
-                .success-section p { color: #d1d5db; }
-                
                 .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
                 .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #2d2d44; color: #d1d5db; }
                 .data-table th { background: #0f0f23; font-weight: 600; color: #9ca3af; }
@@ -690,16 +617,6 @@ export default function Reasoning() {
                 
                 .order-table h3 { color: #e5e7eb; margin-bottom: 0.5rem; }
                 
-                .correlations-section { margin-bottom: 1.5rem; }
-                .correlations-section h3 { color: #a5b4fc; margin-bottom: 1rem; }
-                .correlation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-                .correlation-card { background: #2d2d44; padding: 1rem; border-radius: 8px; text-align: center; border-left: 4px solid #667eea; }
-                .correlation-card.strong { border-left-color: #22c55e; }
-                .correlation-card.moderate { border-left-color: #f59e0b; }
-                .correlation-card h4 { color: #ffffff; font-size: 0.9rem; margin-bottom: 0.5rem; }
-                .correlation-value { font-size: 1.5rem; font-weight: 700; color: #a5b4fc; }
-                .strength-label { color: #9ca3af; font-size: 0.8rem; }
-                
                 .events-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
                 .event-card { background: #2d2d44; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; }
                 .event-card h4 { color: #ffffff; margin-bottom: 0.5rem; }
@@ -717,31 +634,9 @@ export default function Reasoning() {
                 .ai-report { background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)); border: 1px solid #667eea; }
                 .ai-report h2 { color: #a5b4fc; }
                 .report-content p { color: #d1d5db; }
-                .summary-text { font-size: 1.1rem; line-height: 1.6; margin-bottom: 1rem; }
-                
-                .risk-badge { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-weight: 600; }
-                .risk-badge.low { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; }
-                .risk-badge.medium { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid #f59e0b; }
-                .risk-badge.high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
-                
-                .insights-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #2d2d44; }
-                .insights-section h4 { color: #fcd34d; margin-bottom: 0.5rem; }
-                
                 .recommendations h4 { color: #fcd34d; margin-top: 1rem; }
                 .recommendations ul { margin-top: 0.5rem; padding-left: 1.25rem; }
                 .recommendations li { margin-bottom: 0.5rem; color: #d1d5db; }
-                
-                .proceed-to-inventory { margin-top: 1.5rem; text-align: center; padding: 1.5rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.1)); border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.3); }
-                .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
-                .proceed-btn { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; color: white; }
-                .proceed-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4); }
-                .proceed-hint { margin-top: 0.75rem; color: #6ee7b7; font-size: 0.9rem; }
-                
-                @media (max-width: 768px) {
-                    .selection-grid { grid-template-columns: 1fr; }
-                    .tabs { flex-direction: column; }
-                    .tab { width: 100%; text-align: center; }
-                }
             `}</style>
         </div>
     )

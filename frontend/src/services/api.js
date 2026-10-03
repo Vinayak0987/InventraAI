@@ -139,8 +139,6 @@ export const salesApi = {
     uploadCsv: (formData) => api.post('/sales/bulk', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
-    importFromDataset: (datasetId, columnMapping = {}) =>
-        api.post(`/sales/import-dataset/${datasetId}`, { column_mapping: columnMapping }),
     getDaily: (date) => api.get('/sales/daily', { params: { date } }),
     getHistory: (params) => api.get('/sales/history', { params }),
     getProducts: () => api.get('/sales/products')
@@ -168,36 +166,3 @@ export const dailyItemsApi = {
     getSummary: () => api.get('/daily-items/summary'),
     generateDailyOrder: () => api.post('/daily-items/auto-order')
 }
-
-// Advanced AI Features API
-export const advancedApi = {
-    // Chat with Dataset
-    chatWithDataset: (datasetId, question) =>
-        api.post(`/datasets/${datasetId}/chat`, { question }),
-
-    // Synthetic Data - Schema Suggestion (AI-powered)
-    suggestSchema: (description) => api.post('/synthetic/suggest-schema', { description }),
-
-    // Synthetic Data Generation
-    generateSynthetic: (config) => api.post('/synthetic/generate', config),
-
-    // Multi-Modal Training
-    trainMultimodal: (formData) => api.post('/training/multimodal', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    })
-}
-
-// Helper to get auth token (for components that need raw fetch)
-export const getAuthToken = () => {
-    const authData = localStorage.getItem('inferx-auth')
-    if (authData) {
-        try {
-            const parsed = JSON.parse(authData)
-            return parsed?.state?.token || null
-        } catch (e) {
-            return null
-        }
-    }
-    return null
-}
-

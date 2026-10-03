@@ -1,5 +1,5 @@
 # ======================
-# InventraAI Backend Dependencies
+# InferX-ML Backend Dependencies
 # ======================
 
 # Core Framework
@@ -37,8 +37,8 @@ prophet==1.1.5
 statsmodels==0.14.0
 
 # Machine Learning - Deep Learning
-tensorflow==2.15.0
-# keras is included in tensorflow 2.15.0, no separate install needed
+tensorflow>=2.16.0
+# keras is included in tensorflow, no separate install needed
 
 # Machine Learning - Explainability
 shap==0.44.0

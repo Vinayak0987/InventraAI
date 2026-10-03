@@ -15,19 +15,11 @@ def list_models():
     """List all trained models for current user"""
     user_id = int(get_jwt_identity())
     
-    # Debug: Check ALL experiments first
-    all_experiments = Experiment.query.filter_by(user_id=user_id).all()
-    print(f"[DEBUG] User {user_id} has {len(all_experiments)} total experiments", flush=True)
-    for exp in all_experiments:
-        print(f"[DEBUG]   - {exp.id}: {exp.name} | status={exp.status} | dataset_id={exp.dataset_id}", flush=True)
-    
     # Get completed experiments (trained models)
     experiments = Experiment.query.filter_by(
         user_id=user_id,
         status='completed'
     ).order_by(Experiment.completed_at.desc()).all()
-    
-    print(f"[DEBUG] Found {len(experiments)} completed models", flush=True)
     
     return jsonify({
         'models': [e.to_dict() for e in experiments],

@@ -60,7 +60,7 @@ export default function Dashboard() {
         <div className="dashboard">
             <div className="page-header">
                 <h1>Dashboard</h1>
-                <p>Welcome to InventraAI. Start by uploading a dataset.</p>
+                <p>Welcome to InferX-ML. Start by uploading a dataset.</p>
             </div>
 
             {/* Stats Grid */}

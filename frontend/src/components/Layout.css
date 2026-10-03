@@ -126,34 +126,6 @@
     filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.4));
 }
 
-/* Highlighted Nav Item (ML Pipeline) */
-.nav-item[href="/ml-pipeline"] {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    position: relative;
-}
-
-.nav-item[href="/ml-pipeline"]::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 60%;
-    background: linear-gradient(180deg, #6366f1 0%, #a855f7 100%);
-    border-radius: 0 2px 2px 0;
-}
-
-.nav-item[href="/ml-pipeline"]:hover {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%);
-    border-color: rgba(99, 102, 241, 0.3);
-}
-
-.nav-item[href="/ml-pipeline"] svg {
-    color: #818cf8;
-}
-
 .sidebar.collapsed .nav-item {
     justify-content: center;
     padding: 1rem 0.5rem;

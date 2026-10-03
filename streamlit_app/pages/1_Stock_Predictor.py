@@ -16,7 +16,7 @@ def get_inventory_from_db():
     """Fetch current inventory from database"""
     try:
         headers = {'X-Internal-Secret': INTERNAL_SECRET}
-        response = requests.get(f"{API_URL}/inventory/items", headers=headers, timeout=10)
+        response = requests.get(f"{API_URL}/inventory/items/internal", headers=headers, timeout=10)
         if response.status_code == 200:
             return response.json().get('items', [])
     except:

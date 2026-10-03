@@ -117,15 +117,8 @@ export default function Models() {
 
                             <div className="model-actions">
                                 <Link
-                                    to={`/models/${model.id}`}
+                                    to={`/predictions/${model.id}`}
                                     className="btn btn-primary"
-                                >
-                                    <BarChart3 size={16} />
-                                    Dashboard
-                                </Link>
-                                <Link
-                                    to={`/models/${model.id}/predict`}
-                                    className="btn btn-secondary"
                                 >
                                     <TrendingUp size={16} />
                                     Predict

@@ -1,3 +1,3 @@
 """
-InventraAI Test Suite
+InferX-ML Test Suite
 """

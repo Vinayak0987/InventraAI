@@ -1,11 +1,13 @@
 """
 Dataset Routes
 """
+import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from app import db
 from app.models.dataset import Dataset
+from app.services.dataset_loader import UPLOAD_ROOT
 
 datasets_bp = Blueprint('datasets', __name__)
 
@@ -22,14 +24,7 @@ def allowed_file(filename):
 def list_datasets():
     """List all datasets for current user"""
     user_id = int(get_jwt_identity())
-    
-    print(f"[DEBUG] Listing datasets for user_id: {user_id}", flush=True)
-    
     datasets = Dataset.query.filter_by(user_id=user_id).order_by(Dataset.created_at.desc()).all()
-    
-    print(f"[DEBUG] Found {len(datasets)} datasets in database", flush=True)
-    for ds in datasets:
-        print(f"[DEBUG]   - {ds.id}: {ds.name} | file_path={ds.file_path}", flush=True)
     
     return jsonify({
         'datasets': [d.to_dict() for d in datasets],
@@ -64,13 +59,19 @@ def upload_dataset():
     file_content = file.read()
     file_size = len(file_content)
     file.seek(0)  # Reset file pointer
-    
+
+    # Always save a local copy (used when MinIO is unavailable)
+    user_upload_dir = os.path.join(UPLOAD_ROOT, str(user_id))
+    os.makedirs(user_upload_dir, exist_ok=True)
+    local_disk_path = os.path.join(user_upload_dir, filename)
+    with open(local_disk_path, 'wb') as f:
+        f.write(file_content)
+
     # Upload to MinIO
+    file_path = f'{user_id}/{filename}'
     try:
         from app.services.minio_service import get_minio_service
         minio_service = get_minio_service()
-        
-        file_path = f'{user_id}/{filename}'
         minio_service.upload_bytes(
             bucket='datasets',
             object_name=file_path,
@@ -78,8 +79,7 @@ def upload_dataset():
             content_type=file.content_type or 'application/octet-stream'
         )
     except Exception as e:
-        # If MinIO fails, continue without it (for development)
-        print(f"MinIO upload failed: {e}")
+        print(f"MinIO upload failed, using local storage: {e}")
         file_path = f'local/{user_id}/{filename}'
     
     # Create database record
@@ -141,6 +141,33 @@ def get_dataset(dataset_id):
     return jsonify({'dataset': dataset.to_dict()}), 200
 
 
+def _ensure_column_info(dataset):
+    """Populate column_info from stored file when missing (e.g. legacy seed data)."""
+    if dataset.column_info:
+        return dataset.column_info
+
+    try:
+        from app.services.dataset_loader import load_dataset_dataframe
+        df = load_dataset_dataframe(dataset.file_path, file_type=dataset.file_type)
+        dataset.num_rows = len(df)
+        dataset.num_columns = len(df.columns)
+        dataset.data_type = dataset.data_type or 'tabular'
+        dataset.column_info = {
+            col: {
+                'dtype': str(df[col].dtype),
+                'null_count': int(df[col].isnull().sum()),
+            }
+            for col in df.columns
+        }
+        dataset.profile_status = 'completed'
+        db.session.commit()
+        return dataset.column_info
+    except Exception as e:
+        print(f"Profiling from file failed: {e}")
+
+    return None
+
+
 @datasets_bp.route('/<int:dataset_id>/profile', methods=['GET'])
 @jwt_required()
 def get_dataset_profile(dataset_id):
@@ -150,12 +177,14 @@ def get_dataset_profile(dataset_id):
     
     if not dataset:
         return jsonify({'error': 'Dataset not found'}), 404
+
+    column_info = _ensure_column_info(dataset)
     
     return jsonify({
         'dataset_id': dataset.id,
         'profile_status': dataset.profile_status,
         'profile_data': dataset.profile_data,
-        'column_info': dataset.column_info
+        'column_info': column_info
     }), 200
 
 

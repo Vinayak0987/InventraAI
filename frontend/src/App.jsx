@@ -6,18 +6,13 @@ import Dashboard from './pages/Dashboard'
 import Datasets from './pages/Datasets'
 import Training from './pages/Training'
 import Models from './pages/Models'
-import ModelDashboard from './pages/ModelDashboard'
 import Predictions from './pages/Predictions'
 import Reasoning from './pages/Reasoning'
 import Inventory from './pages/Inventory'
-
+import DemandForecast from './pages/DemandForecast'
 import DailyItems from './pages/DailyItems'
 import SalesInput from './pages/SalesInput'
 import Login from './pages/Login'
-import MLPipeline from './pages/MLPipeline'
-import DataChat from './pages/DataChat'
-import SyntheticData from './pages/SyntheticData'
-
 import AnimatedGridBackground from './components/AnimatedGridBackground'
 import { useAuthStore } from './store/authStore'
 
@@ -59,18 +54,13 @@ function App() {
                                 <Layout>
                                     <Routes>
                                         <Route path="/dashboard" element={<Dashboard />} />
-                                        <Route path="/ml-pipeline" element={<MLPipeline />} />
-                                        <Route path="/data-chat" element={<DataChat />} />
-                                        <Route path="/synthetic-data" element={<SyntheticData />} />
                                         <Route path="/datasets" element={<Datasets />} />
                                         <Route path="/training" element={<Training />} />
                                         <Route path="/models" element={<Models />} />
-                                        <Route path="/models/:modelId" element={<ModelDashboard />} />
-                                        <Route path="/models/:modelId/:tab" element={<ModelDashboard />} />
                                         <Route path="/predictions/:modelId?" element={<Predictions />} />
                                         <Route path="/reasoning" element={<Reasoning />} />
                                         <Route path="/inventory" element={<Inventory />} />
-
+                                        <Route path="/forecast" element={<DemandForecast />} />
                                         <Route path="/daily-items" element={<DailyItems />} />
                                         <Route path="/sales" element={<SalesInput />} />
                                     </Routes>

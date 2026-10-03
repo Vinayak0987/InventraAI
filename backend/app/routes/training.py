@@ -13,12 +13,22 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 training_bp = Blueprint('training', __name__)
 
 
+def _fail_experiment(experiment, message: str):
+    """Mark experiment failed and persist a user-visible error message."""
+    experiment.status = 'failed'
+    results = dict(experiment.results or {})
+    results['error_message'] = message
+    experiment.results = results
+    db.session.commit()
+
+
 # CombinedPreprocessor at module level for pickle compatibility
 class CombinedPreprocessor:
     """Preprocessor that handles both categorical encoding and scaling"""
     
     def __init__(self):
         self.label_encoders = {}
+        self.target_encoder = None
         self.scaler = StandardScaler()
         self.feature_columns = None
         self.categorical_columns = []
@@ -26,7 +36,9 @@ class CombinedPreprocessor:
     
     def fit_transform(self, X):
         self.feature_columns = list(X.columns)
-        self.categorical_columns = list(X.select_dtypes(include=['object']).columns)
+        self.categorical_columns = list(
+            X.select_dtypes(include=['object', 'category', 'string', 'bool']).columns
+        )
         self.numeric_columns = [c for c in self.feature_columns if c not in self.categorical_columns]
         
         X_processed = X.copy()
@@ -234,69 +246,56 @@ def _run_training_task(experiment_id, file_path, target_column, column_info):
     print(f"{'='*60}", flush=True)
     
     try:
-        # Load dataset from MinIO or local
+        # Load dataset from MinIO or local uploads
+        dataset_record = Dataset.query.get(experiment.dataset_id)
+        file_type = dataset_record.file_type if dataset_record else 'csv'
         try:
-            from app.services.minio_service import get_minio_service
-            print(f"📂 Attempting to download file: {file_path}", flush=True)
-            minio_service = get_minio_service()
-            
-            # List objects to verify it exists
-            objects = minio_service.list_objects('datasets', prefix=file_path)
-            print(f"🔎 Found objects: {[obj['name'] for obj in objects]}")
-            
-            file_content = minio_service.download_bytes('datasets', file_path)
-            
-            if not file_content:
-                raise Exception("File content is empty or None")
-                
-            print(f"📦 Downloaded {len(file_content)} bytes")
-            df = pd.read_csv(io.BytesIO(file_content))
-            print(f"📊 DataFrame loaded: {df.shape}")
+            from app.services.dataset_loader import load_dataset_dataframe
+            print(f"📂 Loading dataset file: {file_path}", flush=True)
+            df = load_dataset_dataframe(file_path, file_type=file_type)
+            print(f"📊 DataFrame loaded: {df.shape}", flush=True)
+        except FileNotFoundError as e:
+            print(f"⚠️ Dataset load failed: {e}", flush=True)
+            _fail_experiment(
+                experiment,
+                f'Could not load dataset file. Upload a CSV on the Datasets page, '
+                f'then train on that upload (not the demo sample). Details: {e}',
+            )
+            return
         except Exception as e:
-            print(f"⚠️ MinIO download failed: {e}")
-            import traceback
-            traceback.print_exc()
-            
-            # Fallback logic...
-            print("🔄 Switching to fallback dummy data...")
-            if column_info:
-                cols = list(column_info.keys())
-                df = pd.DataFrame({col: np.random.randn(100) for col in cols})
-                # If target is categorical, fix it
-                if target_column in column_info and column_info[target_column].get('dtype') == 'object':
-                     df[target_column] = np.random.choice(['A', 'B', 'C'], 100)
-                else:
-                     # Make sure target exists if using dummy data
-                     if target_column not in df.columns:
-                         df[target_column] = np.random.randint(0, 2, 100)
-            else:
-                raise Exception("Cannot load dataset and no column info available")
-        
+            print(f"⚠️ Dataset load failed: {e}", flush=True)
+            _fail_experiment(experiment, f'Could not read dataset: {e}')
+            return
+
         # Prepare data
         if target_column not in df.columns:
-            experiment.status = 'failed'
-            experiment.error_message = f'Target column "{target_column}" not found'
-            db.session.commit()
+            _fail_experiment(
+                experiment,
+                f'Target column "{target_column}" not found in dataset.',
+            )
             return
         
         X = df.drop(columns=[target_column])
-        y = df[target_column]
-        
-        # Detect problem type
-        if y.dtype == 'object' or y.nunique() < 10:
-            problem_type = 'classification'
-            if y.dtype == 'object':
-                le = LabelEncoder()
-                y = le.fit_transform(y)
-        else:
+        y_raw = df[target_column]
+
+        # Detect problem type and encode target (required for XGBoost/LightGBM)
+        target_encoder = None
+        if pd.api.types.is_numeric_dtype(y_raw) and y_raw.nunique() >= 10:
             problem_type = 'regression'
-        
+            y = pd.to_numeric(y_raw, errors='coerce').values
+        else:
+            problem_type = 'classification'
+            target_encoder = LabelEncoder()
+            y = target_encoder.fit_transform(y_raw.astype(str))
+
         experiment.problem_type = problem_type
         db.session.commit()
-        
+
         # Use the module-level CombinedPreprocessor for pickle compatibility
         preprocessor = CombinedPreprocessor()
+        preprocessor.target_encoder = target_encoder
         X_scaled = preprocessor.fit_transform(X)
+        y = np.asarray(y, dtype=np.int64 if problem_type == 'classification' else np.float64)
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
@@ -322,7 +321,11 @@ def _run_training_task(experiment_id, file_path, target_column, column_info):
             # Add XGBoost if available
             try:
                 from xgboost import XGBClassifier
-                models.append(('XGBoost', XGBClassifier(n_estimators=100, random_state=42, use_label_encoder=False, eval_metric='logloss')))
+                models.append(('XGBoost', XGBClassifier(
+                    n_estimators=100,
+                    random_state=42,
+                    eval_metric='mlogloss' if len(np.unique(y_train)) > 2 else 'logloss',
+                )))
             except ImportError:
                 print("⚠️ XGBoost not available, skipping...", flush=True)
             
@@ -465,7 +468,12 @@ def _run_training_task(experiment_id, file_path, target_column, column_info):
             try:
                 import tempfile
                 import sys
-                sys.path.insert(0, 'c:/Users/alok2/OneDrive/Desktop/Ahem_Hack')
+                import os
+                project_root = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), '..', '..', '..')
+                )
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
                 from ml_engine.packaging.model_packager import ModelPackager, create_feature_schema
                 from app.services.minio_service import get_minio_service
                 
@@ -479,13 +487,18 @@ def _run_training_task(experiment_id, file_path, target_column, column_info):
                     
                     # Prepare metadata
                     metadata = {
-                        'name': experimentName if 'experimentName' in dir() else f"Model_{experiment.id}",
+                        'name': experiment.name or f"Model_{experiment.id}",
                         'experiment_id': experiment.id,
                         'problem_type': problem_type,
                         'target_column': target_column,
                         'best_model': best_model_name,
                         'best_score': float(best_score),
-                        'training_results': all_results
+                        'training_results': all_results,
+                        'target_classes': (
+                            list(target_encoder.classes_)
+                            if target_encoder is not None
+                            else None
+                        ),
                     }
                     
                     # Create the package directory with all files
@@ -544,9 +557,7 @@ def _run_training_task(experiment_id, file_path, target_column, column_info):
             print(f"❌ Failed to fix status: {fix_error}", flush=True)
         
     except Exception as e:
-        experiment.status = 'failed'
-        experiment.error_message = str(e)
-        db.session.commit()
+        _fail_experiment(experiment, str(e))
         print(f"Training failed: {e}")
 
 

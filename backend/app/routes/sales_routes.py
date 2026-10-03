@@ -8,166 +8,11 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import csv
 import io
-import pandas as pd
 
 from app import db
 from app.models.sales_models import SalesRecord
-from app.models.dataset import Dataset
 
 sales_bp = Blueprint('sales', __name__)
-
-
-@sales_bp.route('/import-dataset/<int:dataset_id>', methods=['POST'])
-@jwt_required()
-def import_from_dataset(dataset_id):
-    """Import sales data from an existing uploaded dataset"""
-    user_id = int(get_jwt_identity())
-    
-    # Get the dataset
-    dataset = Dataset.query.filter_by(id=dataset_id, user_id=user_id).first()
-    if not dataset:
-        return jsonify({'error': 'Dataset not found'}), 404
-    
-    if dataset.file_type not in ['csv', 'xlsx', 'xls']:
-        return jsonify({'error': 'Dataset must be a CSV or Excel file'}), 400
-    
-    try:
-        # Try to get file from MinIO
-        try:
-            from app.services.minio_service import get_minio_service
-            minio_service = get_minio_service()
-            file_content = minio_service.download_bytes('datasets', dataset.file_path)
-        except Exception as e:
-            print(f"MinIO download failed: {e}")
-            return jsonify({'error': 'Could not retrieve dataset file'}), 500
-        
-        # Read into DataFrame
-        if dataset.file_type == 'csv':
-            df = pd.read_csv(io.BytesIO(file_content))
-        else:
-            df = pd.read_excel(io.BytesIO(file_content))
-        
-        # Get column mapping from request (optional)
-        body = request.get_json() or {}
-        column_mapping = body.get('column_mapping', {})
-        
-        # Flexible column detection
-        def get_column(df, options):
-            for opt in options:
-                if opt in df.columns:
-                    return opt
-                # Case-insensitive match
-                for col in df.columns:
-                    if col.lower() == opt.lower():
-                        return col
-            return None
-        
-        product_col = column_mapping.get('product_name') or get_column(df, ['product_name', 'Product', 'item', 'name', 'Item', 'Name', 'product', 'Product Name', 'ItemName'])
-        quantity_col = column_mapping.get('quantity_sold') or get_column(df, ['quantity_sold', 'quantity', 'qty', 'Quantity', 'Qty', 'units_sold', 'UnitsSold', 'Sales Quantity'])
-        price_col = column_mapping.get('unit_price') or get_column(df, ['unit_price', 'price', 'Price', 'unit_cost', 'UnitPrice', 'Rate'])
-        date_col = column_mapping.get('sale_date') or get_column(df, ['sale_date', 'date', 'Date', 'SaleDate', 'Order Date', 'Transaction Date'])
-        category_col = column_mapping.get('category') or get_column(df, ['category', 'Category', 'product_category', 'ProductCategory', 'Type'])
-        total_col = column_mapping.get('total_amount') or get_column(df, ['total_amount', 'total', 'Total', 'Amount', 'Revenue', 'TotalAmount'])
-        
-        if not product_col:
-            return jsonify({
-                'error': 'Could not find product name column',
-                'available_columns': list(df.columns),
-                'hint': 'Provide column_mapping in request body'
-            }), 400
-        
-        imported = 0
-        errors = []
-        
-        min_date = None
-        max_date = None
-        
-        for i, row in df.iterrows():
-            try:
-                product_name = row.get(product_col)
-                if pd.isna(product_name) or not str(product_name).strip():
-                    continue
-                
-                quantity = row.get(quantity_col, 1) if quantity_col else 1
-                if pd.isna(quantity):
-                    quantity = 1
-                quantity = float(quantity)
-                
-                price = row.get(price_col, 0) if price_col else 0
-                if pd.isna(price):
-                    price = 0
-                price = float(price)
-                
-                # Calculate total
-                if total_col and not pd.isna(row.get(total_col)):
-                    total = float(row.get(total_col))
-                else:
-                    total = quantity * price
-                
-                category = None
-                if category_col and not pd.isna(row.get(category_col)):
-                    category = str(row.get(category_col))
-                
-                # Parse date
-                sale_date = datetime.utcnow().date()
-                if date_col and not pd.isna(row.get(date_col)):
-                    date_val = row.get(date_col)
-                    if isinstance(date_val, str):
-                        for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d']:
-                            try:
-                                sale_date = datetime.strptime(date_val, fmt).date()
-                                break
-                            except:
-                                continue
-                    elif hasattr(date_val, 'date'):
-                        sale_date = date_val.date()
-                
-                # Update date range
-                if min_date is None or sale_date < min_date:
-                    min_date = sale_date
-                if max_date is None or sale_date > max_date:
-                    max_date = sale_date
-
-                sale = SalesRecord(
-                    user_id=user_id,
-                    product_name=str(product_name).strip(),
-                    category=category,
-                    quantity_sold=quantity,
-                    unit_price=price,
-                    total_amount=total,
-                    sale_date=sale_date
-                )
-                db.session.add(sale)
-                imported += 1
-                
-            except Exception as e:
-                errors.append({'row': i, 'error': str(e)})
-                if len(errors) > 20:
-                    break
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': f'Imported {imported} sales records from {dataset.name}',
-            'imported': imported,
-            'total_rows': len(df),
-            'errors': errors[:10],
-            'columns_detected': {
-                'product_name': product_col,
-                'quantity_sold': quantity_col,
-                'unit_price': price_col,
-                'sale_date': date_col,
-                'category': category_col,
-                'total_amount': total_col
-            },
-            'date_range': {
-                'min': min_date.isoformat() if min_date else None,
-                'max': max_date.isoformat() if max_date else None
-            }
-        }), 201
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to process dataset: {str(e)}'}), 500
 
 
 @sales_bp.route('', methods=['POST'])
@@ -274,9 +119,6 @@ def _import_csv_sales(file, user_id):
         imported = 0
         errors = []
         
-        min_date = None
-        max_date = None
-        
         for i, row in enumerate(reader):
             try:
                 # Flexible column mapping
@@ -300,12 +142,6 @@ def _import_csv_sales(file, user_id):
                         except:
                             continue
                 
-                # Update date range
-                if min_date is None or sale_date < min_date:
-                    min_date = sale_date
-                if max_date is None or sale_date > max_date:
-                    max_date = sale_date
-
                 sale = SalesRecord(
                     user_id=user_id,
                     product_name=product_name,
@@ -326,11 +162,7 @@ def _import_csv_sales(file, user_id):
         return jsonify({
             'message': f'CSV imported: {imported} records',
             'imported': imported,
-            'errors': errors[:10],
-            'date_range': {
-                'min': min_date.isoformat() if min_date else None,
-                'max': max_date.isoformat() if max_date else None
-            }
+            'errors': errors[:10]
         }), 201
         
     except Exception as e:

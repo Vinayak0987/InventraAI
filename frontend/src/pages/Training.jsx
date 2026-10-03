@@ -33,22 +33,15 @@ export default function Training() {
     const [isAnalyzing, setIsAnalyzing] = useState(false)
     const [analysisError, setAnalysisError] = useState(null)
 
-    const { data: datasetsData, error: datasetsError, isLoading: datasetsLoading } = useQuery({
+    const { data: datasetsData, isLoading: datasetsLoading, isError: datasetsError } = useQuery({
         queryKey: ['datasets'],
         queryFn: () => datasetsApi.list()
     })
 
-    // Debug logging - check browser console
-    console.log('[Training] datasetsData:', datasetsData)
-    console.log('[Training] datasetsError:', datasetsError)
-    console.log('[Training] datasetsLoading:', datasetsLoading)
-
     const datasets = datasetsData?.data?.datasets || []
-    console.log('[Training] datasets array:', datasets)
-
     const selectedDatasetInfo = datasets.find(d => d.id.toString() === selectedDataset)
 
-    const { data: profileData } = useQuery({
+    const { data: profileData, isLoading: profileLoading, isError: profileError } = useQuery({
         queryKey: ['dataset-profile', selectedDataset],
         queryFn: () => datasetsApi.getProfile(selectedDataset),
         enabled: !!selectedDataset
@@ -57,6 +50,8 @@ export default function Training() {
     const columns = profileData?.data?.column_info
         ? Object.keys(profileData.data.column_info)
         : []
+
+    const canStartTraining = !!selectedDataset && !!targetColumn && !isTraining
 
     // Polling for status
     const { data: statusData } = useQuery({
@@ -74,17 +69,29 @@ export default function Training() {
         refetchInterval: isTraining ? 2000 : false
     })
 
+    const [trainingError, setTrainingError] = useState(null)
+
     const startTrainingMutation = useMutation({
         mutationFn: (data) => trainingApi.start(data),
         onSuccess: (response) => {
+            setTrainingError(null)
             setCurrentJob(response.data.experiment)
             setIsTraining(true)
+        },
+        onError: (error) => {
+            setTrainingError(error.response?.data?.error || 'Failed to start training')
         }
     })
 
-    // Check for completion
-    if (isTraining && statusData?.data?.experiment?.status === 'completed') {
+    // Check for completion or failure
+    if (isTraining && ['completed', 'failed'].includes(statusData?.data?.experiment?.status)) {
         setIsTraining(false)
+        if (statusData?.data?.experiment?.status === 'failed') {
+            setTrainingError(
+                statusData?.data?.experiment?.error_message ||
+                'Training failed. Upload a CSV on the Datasets page and try again.'
+            )
+        }
     }
 
     // AI Prompt Analysis Handler
@@ -116,8 +123,16 @@ export default function Training() {
     }
 
     const handleStartTraining = () => {
-        if (!selectedDataset || !targetColumn) return
+        if (!selectedDataset) {
+            setTrainingError('Please select a dataset first.')
+            return
+        }
+        if (!targetColumn) {
+            setTrainingError('Please select a target column to predict.')
+            return
+        }
 
+        setTrainingError(null)
         startTrainingMutation.mutate({
             dataset_id: parseInt(selectedDataset),
             name: experimentName || `Experiment ${new Date().toLocaleDateString()}`,
@@ -157,7 +172,11 @@ export default function Training() {
                         <select
                             className="input"
                             value={selectedDataset}
-                            onChange={(e) => setSelectedDataset(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedDataset(e.target.value)
+                                setTargetColumn('')
+                                setTrainingError(null)
+                            }}
                             disabled={isTraining}
                         >
                             <option value="">Select a dataset...</option>
@@ -167,6 +186,17 @@ export default function Training() {
                                 </option>
                             ))}
                         </select>
+                        {datasetsLoading && (
+                            <p className="form-hint">Loading datasets...</p>
+                        )}
+                        {datasetsError && (
+                            <p className="form-hint form-hint-error">Could not load datasets. Check that you are logged in.</p>
+                        )}
+                        {!datasetsLoading && !datasetsError && datasets.length === 0 && (
+                            <p className="form-hint form-hint-error">
+                                No datasets yet. Upload a CSV on the <a href="/datasets">Datasets</a> page first.
+                            </p>
+                        )}
                     </div>
 
                     {/* AI Goal Analysis Section */}
@@ -253,6 +283,20 @@ export default function Training() {
                         </div>
                     )}
 
+                    {selectedDataset && profileLoading && (
+                        <p className="form-hint">Loading columns...</p>
+                    )}
+
+                    {selectedDataset && !profileLoading && profileError && (
+                        <p className="form-hint form-hint-error">Could not load dataset columns.</p>
+                    )}
+
+                    {selectedDataset && !profileLoading && !profileError && columns.length === 0 && (
+                        <p className="form-hint form-hint-error">
+                            This dataset has no column profile yet. Re-upload it on the Datasets page or wait for profiling to finish.
+                        </p>
+                    )}
+
                     {selectedDataset && columns.length > 0 && (
                         <div className="form-group">
                             <label className="label">
@@ -300,10 +344,28 @@ export default function Training() {
                         />
                     </div>
 
+                    {(trainingError || startTrainingMutation.isError) && (
+                        <div className="ai-error">
+                            <AlertCircle size={16} />
+                            <span>{trainingError || startTrainingMutation.error?.response?.data?.error}</span>
+                        </div>
+                    )}
+
+                    {!canStartTraining && !isTraining && selectedDataset && !targetColumn && columns.length > 0 && (
+                        <p className="form-hint">Select a target column above to enable training.</p>
+                    )}
+
                     <button
                         className="btn btn-primary start-btn"
                         onClick={handleStartTraining}
-                        disabled={!selectedDataset || !targetColumn || (isTraining && !statusData?.data?.experiment?.status === 'completed')}
+                        disabled={!canStartTraining}
+                        title={
+                            !selectedDataset
+                                ? 'Select a dataset'
+                                : !targetColumn
+                                    ? 'Select a target column'
+                                    : 'Start training'
+                        }
                     >
                         {isTraining ? (
                             <>
@@ -354,9 +416,16 @@ export default function Training() {
                                     <p className={`status-badge ${statusData?.data?.experiment?.status}`}>
                                         Status: {statusData?.data?.experiment?.status || 'Starting...'}
                                     </p>
+                                    {statusData?.data?.experiment?.status === 'failed' && (
+                                        <p className="form-hint form-hint-error" style={{ marginTop: '0.5rem' }}>
+                                            {statusData.data.experiment.error_message ||
+                                                'Dataset file could not be loaded. Go to Datasets, upload your CSV, then train on that file.'}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
+                            {statusData?.data?.experiment?.status !== 'failed' && (
                             <div className="progress-steps">
                                 <div className={`step ${['training', 'completed'].includes(statusData?.data?.experiment?.status) ? 'completed' : ''}`}>
                                     <CheckCircle size={20} />
@@ -371,6 +440,7 @@ export default function Training() {
                                     <span>Evaluation</span>
                                 </div>
                             </div>
+                            )}
 
                             {/* Live Logs Terminal */}
                             <div className="logs-terminal">

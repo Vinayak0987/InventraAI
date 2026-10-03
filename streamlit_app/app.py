@@ -1,6 +1,6 @@
 
 """
-InventraAI Streamlit Application
+InferX-ML Streamlit Application
 Dynamic model loading and prediction UI
 Version: 1.1 (Dynamic Execution)
 """

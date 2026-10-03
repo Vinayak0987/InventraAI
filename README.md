@@ -1,291 +1,273 @@
-# InventraAI – AI-Powered Inventory Management
+<div align="center">
 
-InventraAI is a full-stack inventory management system that uses AI to analyze datasets, generate stock/expiry/order recommendations, and streamline vendor ordering and daily operations. It includes a React frontend with Zustand state persistence and a Flask backend with modular API blueprints.
+<img src="./assets/logo.png" alt="InventraAI Logo" width="130" style="border-radius: 22px;"/>
 
-## 🚀 Quick Start
+# InventraAI — No-Code AutoML & Intelligent Inventory Ecosystem
+
+**A premium, multi-agent AI inventory suite and no-code machine learning platform designed to automate predictive modeling, demand forecasting, and store operations without writing code.**
+
+---
+
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white)](https://docs.celeryq.dev/)
+[![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io)
+[![MinIO](https://img.shields.io/badge/MinIO-C72C48?style=for-the-badge&logo=minio&logoColor=white)](https://min.io)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+
+</div>
+
+---
+
+## 🌟 Overview
+
+**InventraAI** is a state-of-the-art, end-to-end machine learning platform that democratizes predictive analytics for business intelligence, time-series forecasting, and image classification. Powered by a **rule-based AutoML engine** and a **multi-agent AI network**, the system automates the data science lifecycle: data profiling, target recommendation, model training, performance ranking, and model explainability (SHAP). 
+
+The platform features a **Smart Inventory Suite** integrated directly with your predictive models. Business managers can log sales, track perishables (daily items), simulate local trends, compare vendor quotes, and automatically approve AI-recommended purchase orders.
+
+---
+
+### 📐 System Architecture
+
+InventraAI's backend orchestrates data processing, background training, and AI reasoning pipelines while preserving low latency and dynamic responsiveness in the UI.
+
+![System Architecture](./assets/InventraAi_Architecture.png)
+
+---
+
+## 💻 Platform Tour & Experience
+
+---
+
+### 🌐 Main Landing Page
+![Main Landing Dashboard](./assets/1_Main_Dashboard.png)
+The platform landing page provides a comprehensive product introduction. It introduces users to the platform's AutoML architecture, detailing the end-to-end process of importing data, configuring goals via natural language, executing background training, and running dynamic inference models.
+
+---
+
+### 🔑 Secure Authentication Gateway
+![Authentication Page](./assets/2_Authetication.png)
+A secure gateway for user registration and sign-in. Powered by JSON Web Tokens (JWT) on the Flask backend, this system ensures that each user has access only to their own uploaded datasets, trained model artifacts, and inventory ledgers.
+
+---
+
+### 📊 Real-Time Operations Dashboard
+![User Dashboard](./assets/3_DashBoard.png)
+The central command center for business owners and store managers. This dashboard visualizes critical day-to-day metrics, including monthly revenue totals, active inventory item counts, notifications of upcoming local events, and a quick-view panel tracking overall stock health.
+
+---
+
+### 📁 Dataset Management & Auto-Profiling
+![Datasets Store](./assets/4_DataSets_Store.png)
+The primary data repository where users can upload structured data files (CSV, Excel) or ZIP folders containing classified images. The backend automatically saves uploads to MinIO object storage and initiates a profiling process that analyzes column names, infers data types, computes statistics, and flags missing values.
+
+---
+
+### ⚙️ AI Goal Analyzer & AutoML Training Launchpad
+![Model Training](./assets/5_Model_Training.png)
+Define your machine learning goals in natural language (e.g., *"I want to predict inventory reorder quantity"*). The AI Goal Analyzer maps the prompt to your dataset schema, suggesting the optimal target column, identifying the type of ML problem (classification, regression, time-series, or clustering), and configuring the automated data preprocessing pipeline. Once confirmed, Celery workers start training the models.
+
+---
+
+### 🏆 Model Catalog & Performance Leaderboard
+![All Models Catalog](./assets/6_ALL_Models.png)
+The model inventory and ranking leaderboard. When background training runs finish, they are published to this registry. Managers can inspect the model type selected (e.g., Random Forest vs XGBoost), review evaluation metrics (F1-score, Accuracy, RMSE), and activate the best model as the active predictor.
+
+---
+
+### 📈 Dynamic Interactive Predictions
+![Predictions Page](./assets/7_Predictions_page.png)
+This page reads the selected model's `ui_schema.json` configuration to dynamically construct an interactive web form. Users can adjust parameters via range sliders, select categorical items from dropdown menus, and input numeric values to run predictions in real time.
+
+---
+
+### 🧠 Explainable AI & SHAP Reasoning
+![AI Reasoning](./assets/8_AI_Reasoning.png)
+Demystifies model predictions by incorporating SHAP (SHapley Additive exPlanations) values. The dashboard renders feature contribution charts that explain which metrics most heavily influenced a prediction, paired with natural language summaries written by the AI reasoning agent.
+
+---
+
+### 📦 Smart Stock Health & Restocking Control
+![AI Inventory Agent](./assets/9_AI_INVENTORY.png)
+The smart restocking command hub managed by the Stock Analysis and Purchase Order Agents. It calculates the store's overall stock health score, details low-stock and out-of-stock items, and automatically drafts purchase orders to replenish inventory up to optimal target capacities.
+
+---
+
+### 🔮 Multi-Period Demand Forecasting
+![Demand Forecast](./assets/10_Demand_Forecast.png)
+Visualizes sales forecasts generated by Prophet, ARIMA, or LSTM models. Store managers can view sales predictions over a 7-day or 30-day horizon, cross-reference them with local trends, and adjust purchase order quantities before submitting them to suppliers.
+
+---
+
+### 🛒 Sales Record Registry
+![Sales Input](./assets/11_Sales_input.png)
+A fast transaction logging form that registers item sales. Entering sales here updates the database, decreases physical stock levels in the inventory registry, and logs chronological transaction records to retrain demand models.
+
+---
+
+### 🥛 Perishable Daily Items Restocking Log
+![Daily Items](./assets/12_Daily_items.png)
+A specialized log for fast-moving, short shelf-life perishable goods (like milk, yogurt, paneer, and bakery items). Managers can check-in daily shipments, review product quality, track vendor delivery performance, and monitor shelf-life hours to minimize wastage.
+
+---
+
+## 🎬 Platform Demonstration
+
+Experience InventraAI in action! Watch our comprehensive walkthrough showing the AI target detection, AutoML training, dynamic prediction forms, and the smart agent inventory loop.
+
+<div align="center">
+  <h3><a href="https://bit.ly/4a602jB" target="_blank">📺 Watch the Demo Video</a></h3>
+  <br>
+  <a href="https://bit.ly/4a602jB" target="_blank">
+    <img src="./assets/Qrcode.png" alt="Scan to Watch Demo" width="180" style="border-radius: 12px; border: 2px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"/>
+  </a>
+  <p><i>Scan the QR Code to watch the demo directly on your mobile device.</i></p>
+</div>
+
+---
+
+## 🛠️ Technology Stack
+
+### 💻 Frontend & Dashboards
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
+
+* **React.js & Tailwind CSS**: Main responsive dashboard interface, dataset manager, models list, and inventory management tables.
+* **Streamlit App**: Lightweight prediction panels, training progress tracking, and interactive model plots.
+
+---
+
+### ⚙️ API & Worker Layer
+[![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white)](https://docs.celeryq.dev/)
+[![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io)
+
+* **Flask Core**: RESTful API orchestration, routing, database migration, and MinIO synchronization.
+* **Celery & Redis**: Background task workers for training algorithms in parallel without blocking client requests.
+
+---
+
+### 🧠 Machine Learning Core
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)](https://keras.io/)
+[![SHAP](https://img.shields.io/badge/SHAP-Explainable_AI-010101?style=for-the-badge)](https://shap.readthedocs.io/)
+
+* **scikit-learn**: Random Forests, XGBoost, Logistic/Linear Regression, K-Means, and DBSCAN.
+* **Prophet & statsmodels**: Advanced time-series forecasting and ARIMA models.
+* **TensorFlow/Keras**: Transfer learning on MobileNet and EfficientNet for Computer Vision (image classification).
+* **SHAP**: Machine learning model explainability and local feature contribution charts.
+
+---
+
+### 🗄️ Database & Storage
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![MinIO](https://img.shields.io/badge/MinIO-C72C48?style=for-the-badge&logo=minio&logoColor=white)](https://min.io)
+
+* **PostgreSQL**: Stores platform metadata, users, dataset details, ML runs, purchase orders, sales, and weekly reports.
+* **MinIO (S3 compliant)**: Securely stores uploaded files, dataset splits, preprocessor pipelines, and model binaries (`.pkl`, `.h5`).
+
+---
+
+### 🤖 AI Agents Framework
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://deepmind.google/technologies/gemini)
+[![Groq](https://img.shields.io/badge/Groq-Llama3-F55A42?style=for-the-badge)](https://groq.com)
+
+* **Groq API** (*Llama-3.3-70b-versatile*) & **Google Gemini API** (*gemini-2.5-flash*): Powers goal analysis, purchase order justification, weekly reviews, and vendor bids rankings.
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- PostgreSQL (optional; defaults to SQLite)
+- **Python 3.10+**
+- **Node.js 18+**
+- **Docker & Docker Compose**
 
-### Install & Run
+---
+
+### 🐳 Running with Docker (Recommended)
+
+To spin up the entire ecosystem (React frontend, Flask backend, Streamlit dashboard, PostgreSQL, Redis, MinIO, and Celery workers) in a few commands:
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/bharat3214/InventraAI.git
+   cd InventraAI
+   ```
+
+2. **Configure Environment Variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env and supply your GROQ_API_KEY or GEMINI_API_KEY
+   ```
+
+3. **Launch All Services**
+   ```bash
+   docker-compose up --build
+   ```
+
+**Access Points:**
+- 🌐 **Frontend (React)**: http://localhost:3000
+- 📊 **Streamlit App**: http://localhost:8501
+- 🔌 **Backend API**: http://localhost:5000
+- 💾 **MinIO Console**: http://localhost:9001 (admin: `minioadmin` / `minioadmin`)
+
+---
+
+### 🛠️ Running Locally (Development)
+
+#### 1. Spin up Infrastructure Containers
 ```bash
-# Frontend
-cd frontend
-npm install
-npm start
+docker-compose up -d postgres redis minio
+```
 
-# Backend
+#### 2. Set Up Flask Backend
+```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-flask run
+
+# Run migrations & seed demo inventory data
+python migrations.py init
+python migrations.py seed
+
+# Start server
+python run.py
 ```
 
-Open http://localhost:3000. The app will guide you through:
-1) Upload a dataset (Datasets page)
-2) Train a model (ML Pipeline page)
-3) Run AI analysis (Reasoning page)
-4) Create orders (Inventory page)
-5) Log receipts (Daily Items page)
-6) Record sales (Sales Input page)
-
-## 📁 Project Structure
-
-```
-build_and_grow2.0/
-├─ frontend/
-│  ├─ src/
-│  │  ├─ pages/          # Feature pages: Reasoning, Inventory, DailyItems, SalesInput, MLPipeline, Dashboard
-│  │  ├─ store/          # Zustand stores: authStore, inventoryStore
-│  │  ├─ constants/      # Shared constants (e.g., VENDORS_LIST)
-│  │  └─ services/       # API client modules
-├─ backend/
-│  ├─ api/               # Flask blueprints: reasoning_bp, inventory_bp, daily_items_bp, sales_bp, models_bp, datasets_bp
-│  ├─ models/            # SQLAlchemy models
-│  └─ services/          # Business logic and ML pipeline
-└─ README.md
+#### 3. Run Celery Worker (In a new terminal, inside `backend` folder)
+```bash
+source venv/bin/activate  # Windows: venv\Scripts\activate
+celery -A app.celery_app worker --loglevel=info
 ```
 
-## 🧠 Core Features
-
-| Feature | Route | What It Does |
-|---------|-------|--------------|
-| AI Reasoning | `/reasoning` | Runs stock/expiry/order/trends analysis on a selected dataset and model; writes results to `inventoryStore` via `setAllAnalysis()` [1](#1-0)  |
-| Inventory Management | `/inventory` | Reads AI order suggestions, lets users select vendors, send quotation requests, and place purchase orders [2](#1-1)  |
-| Daily Items (Perishables) | `/daily-items` | Configure daily items, log receipts, compare expected vs received quantities |
-| Sales Input & Tracking | `/sales-input` | Manual entry, CSV upload, daily summaries, product analytics [3](#1-2)  |
-| ML Pipeline | `/ml-pipeline` | Dataset upload, preprocessing, AutoML training, model monitoring |
-| Dashboard | `/dashboard` | System overview with quick metrics and navigation shortcuts |
-
-## 🔄 Typical Workflow
-
-```mermaid
-graph TB
-    Reasoning["Reasoning<br/>Run AI Analysis"] -->|orderSuggestions| Inventory["Inventory<br/>Select Vendors & Place Order"]
-    Inventory -->|purchaseOrder| DailyItems["Daily Items<br/>Log Receipts"]
-    DailyItems -->|inventory updates| SalesInput["Sales Input<br/>Log Sales"]
-    SalesInput -->|historical data| Reasoning
+#### 4. Set Up React Frontend
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-1) **Upload data** (Datasets) → 2) **Train model** (ML Pipeline) → 3) **Run AI analysis** (Reasoning) → 4) **Create orders** (Inventory) → 5) **Log receipts** (Daily Items) → 6) **Record sales** (Sales Input) → repeat.
-
-## 🗄️ State Management
-
-- Central Zustand store `inventoryStore` persists to `localStorage` under key `inferx-inventory` [4](#1-3) .
-- Shared analysis state (`orderSuggestions`, `stockAnalysis`, `expiryAnalysis`, `trendsAnalysis`, `fullReport`) is written by Reasoning and read by other pages.
-- Page-specific state (`reasoningState`, `inventoryState`, `salesState`) is isolated per feature.
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 18, React Router, Zustand, Axios
-- **Backend**: Flask, Flask-SQLAlchemy, Flask-JWT-Extended, Blueprints
-- **Database**: PostgreSQL (production) / SQLite (dev)
-- **ML/AI**: Scikit-learn, Pandas, AutoML helpers (backend)
-
-## 📚 Key Pages & APIs
-
-| Page | API Blueprint(s) | Key Endpoints |
-|------|------------------|---------------|
-| Reasoning | `reasoning_bp`, `models_bp`, `datasets_bp` | `POST /api/reasoning/{stock-analysis,expiry-analysis,order-suggestions,trends,full-report}/:id` |
-| Inventory | `inventory_bp` | `GET /api/inventory/suggest-order`, `POST /api/inventory/orders` |
-| Daily Items | `daily_items_bp` | `GET /api/daily-items/items`, `POST /api/daily-items/log-receipt` |
-| Sales Input | `sales_bp`, `datasets_bp` | `POST /api/sales/log`, `POST /api/sales/upload-csv` |
-
-## 🧩 Shared Data
-
-- `VENDORS_LIST` constant is imported by both Inventory and Daily Items for consistent vendor data [5](#1-4) .
-- Demo data fallbacks are defined in each page for development/error handling.
-
-## 🤝 Contributing
-
-1) Fork the repo.
-2) Create a feature branch (`git checkout -b feature/amazing-feature`).
-3) Commit changes (`git commit -m 'Add amazing feature'`).
-4) Push to the branch (`git push origin feature/amazing-feature`).
-5) Open a Pull Request.
-
-## 📄 License
-
-MIT License — see LICENSE file for details.
-
-## Notes
-- The README synthesizes information from the Core Features and Inventory Management wiki pages and key source files. For deeper details, refer to the inline documentation in each component and blueprint.
-- If you are setting up the project for the first time, ensure the backend Flask app is running before starting the React frontend to avoid CORS or API errors.
-
-Wiki pages you might want to explore:
-- [Core Features (Vinayak0987/build_and_grow2.0)](/wiki/Vinayak0987/build_and_grow2.0#2.4)
-- [Inventory Management (Vinayak0987/build_and_grow2.0)](/wiki/Vinayak0987/build_and_grow2.0#2.4.2)
-
-Wiki pages you might want to explore:
-- [Core Features (Vinayak0987/build_and_grow2.0)](/wiki/Vinayak0987/build_and_grow2.0#2.4)
-- [AI Reasoning Engine (Vinayak0987/build_and_grow2.0)](/wiki/Vinayak0987/build_and_grow2.0#2.4.1)
-
-### Citations
-
-**File:** frontend/src/pages/Reasoning.jsx (L5-16)
-```javascript
-export default function Reasoning() {
-    const { token } = useAuthStore()
-    const {
-        reasoningState,
-        setReasoningState,
-        setAllAnalysis,
-        stockAnalysis,
-        expiryAnalysis,
-        orderSuggestions,
-        trendsAnalysis,
-        fullReport
-    } = useInventoryStore()
+#### 5. Start Streamlit App (Optional)
+```bash
+cd streamlit_app
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
-**File:** frontend/src/pages/Inventory.jsx (L222-309)
-```javascript
-    const hasActionItems = orderSuggestions?.suggested_items?.length > 0
-    const selectedVendorsList = vendors.filter(v => selectedVendors.includes(v.id))
+---
 
-    return (
-        <div className="inventory-page">
-            <div className="inventory-header">
-                <div>
-                    <h1>🤖 AI Inventory Center</h1>
-                    <p>Order Generation Agent - Smart inventory replenishment</p>
-                    {lastUpdated && (
-                        <span className="last-updated">
-                            Last analyzed: {new Date(lastUpdated).toLocaleString()}
-                        </span>
-                    )}
-                </div>
-                <button
-                    className={`refresh-btn ${refreshing ? 'spinning' : ''}`}
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                    {refreshing ? 'Refreshing...' : 'Refresh'}
-                </button>
-            </div>
 
-            {/* Purchase Tracking Section - Shows when quotations are sent */}
-            {purchaseOrder && trackingStep && (
-                <div className="purchase-tracking-section">
-                    <div className="tracking-header">
-                        <div className="tracking-title">
-                            <span className="tracking-icon">📋</span>
-                            <div>
-                                <h2>Purchase Order Tracking</h2>
-                                <p>Order ID: {purchaseOrder.orderId}</p>
-                            </div>
-                        </div>
-                        <div className="tracking-vendor-count">
-                            <span className="vendor-label">Vendors Contacted:</span>
-                            <span className="vendor-count">{purchaseOrder.quotationVendors?.length || 0}</span>
-                        </div>
-                    </div>
 
-                    <div className="tracking-progress">
-                        {/* Step 1: Quotation Sent */}
-                        <div className={`tracking-step ${getTrackingStepIndex() >= 0 ? 'active' : ''} ${trackingStep === TRACKING_STEPS.QUOTATION_SENT ? 'current' : ''}`}>
-                            <div className="step-icon">📧</div>
-                            <div className="step-content">
-                                <span className="step-label">Quotation Request Sent</span>
-                                <span className="step-time">
-                                    {new Date(purchaseOrder.quotationSentAt).toLocaleString()}
-                                </span>
-                                <span className="step-detail">
-                                    Sent to {purchaseOrder.quotationVendors?.length} vendors
-                                </span>
-                            </div>
-                            <div className={`step-connector ${getTrackingStepIndex() >= 1 ? 'active' : ''}`}></div>
-                        </div>
 
-                        {/* Step 2: Select Vendor */}
-                        <div className={`tracking-step ${getTrackingStepIndex() >= 1 ? 'active' : ''} ${trackingStep === TRACKING_STEPS.SELECT_VENDOR ? 'current' : ''}`}>
-                            <div className="step-icon">🔍</div>
-                            <div className="step-content">
-                                <span className="step-label">Select Vendor</span>
-                                {trackingStep === TRACKING_STEPS.SELECT_VENDOR && (
-                                    <div className="vendor-dropdown-container">
-                                        <select
-                                            className="vendor-dropdown"
-                                            value={finalVendor?.id || ''}
-                                            onChange={(e) => handleFinalVendorSelect(e.target.value)}
-                                        >
-                                            <option value="">-- Select Best Vendor --</option>
-                                            {purchaseOrder.quotationVendors?.map(vendor => (
-                                                <option key={vendor.id} value={vendor.id}>
-                                                    {vendor.name} ({vendor.category})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p className="dropdown-hint">Choose the vendor with the best quotation</p>
-                                    </div>
-                                )}
-                            </div>
-                            <div className={`step-connector ${getTrackingStepIndex() >= 2 ? 'active' : ''}`}></div>
-                        </div>
 
-                        {/* Step 3: Vendor Selected */}
-                        <div className={`tracking-step ${getTrackingStepIndex() >= 2 ? 'active' : ''} ${trackingStep === TRACKING_STEPS.VENDOR_SELECTED ? 'current' : ''}`}>
-```
 
-**File:** frontend/src/pages/SalesInput.jsx (L226-259)
-```javascript
-    // Upload CSV (keep as fallback)
-    const handleUploadCSV = async (e) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        const uploadData = new FormData()
-        uploadData.append('file', file)
-
-        try {
-            const result = await salesApi.uploadCsv(uploadData)
-            const data = result.data
-            showToast(`Successfully imported ${data.imported} sales records!`)
-
-            if (data.date_range?.max) {
-                const maxDate = data.date_range.max
-                setSelectedDate(maxDate)
-                await loadDailySales(maxDate)
-                showToast(`Showing data for ${maxDate}`)
-            } else {
-                await loadDailySales()
-            }
-
-            await loadHistory()
-        } catch (err) {
-            console.error('Upload failed:', err)
-            showToast('Upload failed: ' + (err.response?.data?.error || err.message), 'error')
-        }
-
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-        }
-    }
-
-```
-
-**File:** frontend/src/store/inventoryStore.js (L108-122)
-```javascript
-        {
-            name: 'inferx-inventory',
-            partialize: (state) => ({
-                orderSuggestions: state.orderSuggestions,
-                stockAnalysis: state.stockAnalysis,
-                expiryAnalysis: state.expiryAnalysis,
-                trendsAnalysis: state.trendsAnalysis,
-                fullReport: state.fullReport,
-                lastUpdated: state.lastUpdated,
-                reasoningState: state.reasoningState,
-                inventoryState: state.inventoryState,
-                salesState: state.salesState
-            })
-        }
-    )
-```
+<div align="center">
+  <sub>Developed with ❤️ for InventraAI. All screenshots are authentic and captured directly from the live platform.</sub>
+</div>

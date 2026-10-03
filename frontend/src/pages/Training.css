@@ -35,6 +35,15 @@
     margin-top: var(--space-2);
 }
 
+.form-hint-error {
+    color: #f87171;
+}
+
+.form-hint a {
+    color: var(--color-primary, #a78bfa);
+    text-decoration: underline;
+}
+
 .textarea {
     resize: vertical;
     min-height: 80px;
